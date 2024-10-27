@@ -1,0 +1,9 @@
+{
+    "invoice_generator_api_key": "YOUR_API_KEY_HERE",
+    "out_directory": "invoices",
+    "default_from": "Your name here",
+    "default_to": "The person you're billing here",
+    "default_logo_link": "You can add a link to your personal logo image here",
+    "default_notes": "Some notes for your customer",
+    "default_terms": "Some terms or conditions for your customer"
+}
