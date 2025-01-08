@@ -1,7 +1,10 @@
 config.json
 rush_hours.csv
+rush_hours.ods
 .invoicing_database
 invoices
+.~lock*
+smorris-invoice*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
