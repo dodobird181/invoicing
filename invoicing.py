@@ -1,92 +1,71 @@
 import json
-from typing import *
-from datetime import datetime
-import taskw
-import pathlib
+import typing as t
+import datetime as dt
+import pandas as pd
 import requests
-import cli
+import uuid
+import textwrap
 
 
-def get_config(config_path="config.json") -> Dict[str, Any]:
+def get_config(config_path="config.json") -> t.Dict[str, t.Any]:
     with open(config_path, "r") as file:
         config = json.load(file) | {"config_path": config_path}
         return config
 
 
-def get_warrior() -> taskw.TaskWarriorShellout:
-    curr_path = pathlib.Path(__file__).parent.resolve()
-    return taskw.TaskWarrior(
-        config_overrides={"data.location": f"{curr_path}/.invoicing_database"}
-    )
+def get_hour_data(filename):
+    df = pd.read_excel(filename, engine="odf")
 
+    def row_to_line_item(i, row) -> t.Dict[str, t.Any]:
+        note_data = str(row['Notes']).split(' | ')
+        if len(note_data) == 1:
+            name = note_data[0]
+            description = ''
+        elif len(note_data) == 2:
+            name = note_data[0]
+            description = '\n'.join(textwrap.wrap(note_data[1]))
+        else:
+            raise ValueError(f'Bad formatting in {note_data}')
+        return {
+            f"items[{i}][name]": f'{row["Date"].strftime("%b %d, %Y")} - {name}',
+            f"items[{i}][quantity]": f'{float(row["Hours"]):0.1f}',
+            f"items[{i}][unit_cost]": f'{float(row["Rate"]):0.0f}',
+            f"items[{i}][description]": description,
+        }
 
-def get_save_path(config: Dict[str, Any]) -> str:
-    directory = config["invoice_out_directory"]
-    filename = f'invoice_{config["runtime"]["timestamp"].strftime("%Y-%m-%d_%H:%M:%S")}'
-    return f"{directory}/{filename}"
+    data = dict()
+    for i, row in df.iterrows():
+        if row['Billing Status'] != 'BILLED':
+            data |= row_to_line_item(i, row)
+    return data
 
 
 config = get_config()
-warrior = get_warrior()
-parsed = cli.parse(config)
-client_name = parsed.client_name.replace(' ', '_').lower()
-client_display_name = parsed.client_name
-parsed.__delattr__('client_name')
-match parsed.command:
-    case 'add':
-        warrior.task_add(description=str(vars(parsed)).replace('\'', '\"'), tags=[client_name])
-    case 'preview':
-        print(f'=== Invoice for {client_display_name} from {config["invoice_from"]} ===')
-        for i, line in enumerate(warrior.filter_tasks({'tag': client_name})):
-            line_data = json.loads(line['description'])
-            print('{n} {desc} {hours} {rate} {extras} {time}'.format(
-                n=i + 1,
-                desc=line_data["task_description"],
-                hours=line_data["hours_worked"],
-                rate=line_data["hourly_rate"],
-                extras=line_data['extra_notes'],
-                time=line_data['timestamp'],
-            ))
-            
-        
+api_key = config["invoice_generator_api_key"]
 
+# prepare data
+data = dict()
+data["from"] = 'Samuel Morris\ndodobird181@gmail.com'
+data["to"] = 'Roy Group'
+#data['logo'] = 'https://avelingartworks.com/cdn/shop/articles/Dodo_white_space_mart_1200x1200.jpg?v=1531952805'
+# ^^^^^ waiting for email for attribution / payment to use in invoice!
+data['logo'] = 'https://static.wikia.nocookie.net/jurassic_park_institute/images/2/2c/JWA_PressKit_Dodo.png/revision/latest?cb=20240117150456'
+data["number"] = uuid.uuid4().hex[16:].upper()
+data["date"] = dt.datetime.now().strftime("%b %d, %Y")
+data["due_date"] = (dt.datetime.now() + dt.timedelta(days=30)).strftime("%b %d, %Y")
+data |= get_hour_data('rush_hours.ods')
+data['item_header'] = "Description"
+data['quantity_header'] = "Hours"
 
-
-def generate(api_key, data):
-    url = "https://invoice-generator.com"
-    headers = {"Authorization": f"Bearer {api_key}"}
-    response = requests.post(url, headers=headers, data=data)
-    if response.status_code == 200:
-        print("Generated invoice successfully!")
-        save_path = f'{config["out-dir"]}/invoice-{dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}'
-        with open(save_path, "wb") as pdf_file:
-            pdf_file.write(response.content)
-        print("Saved invoice successfully at: {save_path}!")
-    else:
-        print("Error generating invoice:", response.status_code, response.text)
-
-
-def get_line_items(csv_data):
-    # TODO
-    return {
-        "items[0][name]": "Starter plan monthly",
-        "items[0][quantity]": 5,
-        "items[0][unit_cost]": 55.3,
-        "items[0][description]": "This took a LOT of work!",
-    }
-
-
-if __name__ == "__main__":
-    """
-    cli_args = get_cli_args()
-    config = get_config()
-
-    data = config["default-invoice"]
-    data["from"] = cli_args["from"] or data["from"]
-    data["to"] = cli_args["to"] or data["to"]
-    data["number"] = uuid.uuid4().hex[16:].upper()
-    data["date"] = dt.datetime.now().strftime("%b %d, %Y")
-    data["due_date"] = (dt.datetime.now() + dt.timedelta(days=14)).strftime("%b %d, %Y")
-    data |= get_line_items(None)
-    generate(api_key=config["invoice-generator-api-key"], data=data)
-    """
+# generate the invoice
+url = "https://invoice-generator.com"
+headers = {"Authorization": f"Bearer {api_key}"}
+response = requests.post(url, headers=headers, data=data)
+if response.status_code == 200:
+    print("Generated invoice successfully!")
+    save_path = f'smorris-invoice-{dt.datetime.now().strftime("%Y-%m-%d")}.pdf'
+    with open(save_path, "wb") as pdf_file:
+        pdf_file.write(response.content)
+    print(f"Saved invoice successfully at: {save_path}!")
+else:
+    print("Error generating invoice:", response.status_code, response.text)
