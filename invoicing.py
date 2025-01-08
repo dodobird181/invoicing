@@ -43,6 +43,11 @@ def get_hour_data(filename):
 config = get_config()
 api_key = config["invoice_generator_api_key"]
 
+# SAM TODO: Clean this up with a config.json file or something to store this data.
+# SAM TODO: Add a CLI interface for this program so that I can just store it on my
+# computer and not have to worry about opening up LibreOffice Calc.
+# Sam TODO: Add a better README for this repository and double-check that it's public.
+
 # prepare data
 data = dict()
 data["from"] = 'Samuel Morris\ndodobird181@gmail.com'
