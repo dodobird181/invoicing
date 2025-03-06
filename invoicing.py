@@ -52,9 +52,7 @@ api_key = config["invoice_generator_api_key"]
 data = dict()
 data["from"] = 'Samuel Morris\ndodobird181@gmail.com'
 data["to"] = 'Roy Group'
-#data['logo'] = 'https://avelingartworks.com/cdn/shop/articles/Dodo_white_space_mart_1200x1200.jpg?v=1531952805'
-# ^^^^^ waiting for email for attribution / payment to use in invoice!
-data['logo'] = 'https://static.wikia.nocookie.net/jurassic_park_institute/images/2/2c/JWA_PressKit_Dodo.png/revision/latest?cb=20240117150456'
+data['logo'] = 'https://github.com/dodobird181/invoicing/blob/main/assets/logo.png?raw=true'
 data["number"] = uuid.uuid4().hex[16:].upper()
 data["date"] = dt.datetime.now().strftime("%b %d, %Y")
 data["due_date"] = (dt.datetime.now() + dt.timedelta(days=30)).strftime("%b %d, %Y")
