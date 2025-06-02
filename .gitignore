@@ -1,3 +1,5 @@
+settings.json
+generated/
 credentials.json
 config.json
 rush_hours.csv
