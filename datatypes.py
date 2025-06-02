@@ -56,3 +56,4 @@ class ClientConfig:
     clientname: str
     invoice_to: str
     pdf_save_folder: str
+    due_date_days: int

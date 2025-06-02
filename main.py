@@ -25,6 +25,7 @@ def get_client_config(clientname: str) -> ClientConfig:
         clientname=clientname,
         invoice_to=client_config["invoice_to"],
         pdf_save_folder=client_config["save_folder"],
+        due_date_days=client_config["invoice_due_date_days"],
     )
 
 
@@ -42,7 +43,7 @@ def build_invoice_for_client(
 ) -> Invoice:
     client = get_client_config(clientname)
     sender_profile = config["sender_profiles"][sender_profile_name]
-    due_date = app_now() + timedelta(days=sender_profile["invoice_due_date_days"])
+    due_date = app_now() + timedelta(days=client.due_date_days)
     return Invoice(
         sender_name=sender_profile["invoice_from"],
         sender_logo_url=sender_profile["invoice_logo_url"],

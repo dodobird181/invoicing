@@ -5,14 +5,14 @@
     "sender_profiles": {
         "sammorris": {
             "invoice_from": "Samuel Morris\ndodobird181@gmail.com",
-            "invoice_logo_url": "https://github.com/dodobird181/invoicing/blob/main/assets/logo.png?raw=true",
-            "invoice_due_date_days": 30
+            "invoice_logo_url": "https://github.com/dodobird181/invoicing/blob/main/assets/logo.png?raw=true"
         }
     },
     "clients": {
         "NatuRnD": {
             "save_folder": "naturnd",
-            "invoice_to": "Roy Group"
+            "invoice_to": "Roy Group",
+            "invoice_due_date_days": 30
         }
     }
 }
