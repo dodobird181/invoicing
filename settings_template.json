@@ -1,9 +1,19 @@
 {
+    "timezone": "US/Eastern",
+    "invoice_generator_url": "https://invoice-generator.com",
     "invoice_generator_api_key": "YOUR_API_KEY_HERE",
-    "out_directory": "invoices",
-    "default_from": "Your name here",
-    "default_to": "The person you're billing here",
-    "default_logo_link": "You can add a link to your personal logo image here",
-    "default_notes": "Some notes for your customer",
-    "default_terms": "Some terms or conditions for your customer"
+    "sender_profiles": {
+        "test_profile": {
+            "invoice_from": "Sir Issac Newton\nexample@gmail.com",
+            "invoice_logo_url": "https://1.bp.blogspot.com/-Q-h3ET01sa8/XnDf-jTiC1I/AAAAAAAAAcs/tDll0bcbdZ4H1ihfKMX5hxUf2rnq-BqzwCEwYBhgL/s1600/Isaac+Newton.jpg"
+        }
+    },
+    "clients": {
+        "Einstein & Co.": {
+            "save_folder": "generated/4_einny",
+            "invoice_to": "Mr. Einstein",
+            "invoice_due_date_days": 30,
+            "gsheet_id": "PASTE_YOUR_GOOGLE_SHEETS_ID_FROM_THE_URL_BAR_HERE"
+        }
+    }
 }
