@@ -13,6 +13,9 @@ requests = "^2.32.3"
 odfpy = "^1.4.1"
 pandas = "^2.2.3"
 invoicegenerator = "^1.2.0"
+google-api-python-client = "^2.170.0"
+google-auth-httplib2 = "^0.2.0"
+google-auth-oauthlib = "^1.2.2"
 
 
 [build-system]
