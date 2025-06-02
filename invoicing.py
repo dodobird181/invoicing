@@ -1,10 +1,11 @@
-import json
-import typing as t
 import datetime as dt
+import json
+import textwrap
+import typing as t
+import uuid
+
 import pandas as pd
 import requests
-import uuid
-import textwrap
 
 
 def get_config(config_path="config.json") -> t.Dict[str, t.Any]:
@@ -17,15 +18,15 @@ def get_hour_data(filename):
     df = pd.read_excel(filename, engine="odf")
 
     def row_to_line_item(i, row) -> t.Dict[str, t.Any]:
-        note_data = str(row['Notes']).split(' | ')
+        note_data = str(row["Notes"]).split(" | ")
         if len(note_data) == 1:
             name = note_data[0]
-            description = ''
+            description = ""
         elif len(note_data) == 2:
             name = note_data[0]
-            description = '\n'.join(textwrap.wrap(note_data[1]))
+            description = "\n".join(textwrap.wrap(note_data[1]))
         else:
-            raise ValueError(f'Bad formatting in {note_data}')
+            raise ValueError(f"Bad formatting in {note_data}")
         return {
             f"items[{i}][name]": f'{row["Date"].strftime("%b %d, %Y")} - {name}',
             f"items[{i}][quantity]": f'{float(row["Hours"]):0.1f}',
@@ -35,7 +36,7 @@ def get_hour_data(filename):
 
     data = dict()
     for i, row in df.iterrows():
-        if row['Billing Status'] != 'BILLED':
+        if row["Billing Status"] != "BILLED":
             data |= row_to_line_item(i, row)
     return data
 
@@ -50,15 +51,17 @@ api_key = config["invoice_generator_api_key"]
 
 # prepare data
 data = dict()
-data["from"] = 'Samuel Morris\ndodobird181@gmail.com'
-data["to"] = 'Roy Group'
-data['logo'] = 'https://github.com/dodobird181/invoicing/blob/main/assets/logo.png?raw=true'
+data["from"] = "Samuel Morris\ndodobird181@gmail.com"
+data["to"] = "Roy Group"
+data["logo"] = (
+    "https://github.com/dodobird181/invoicing/blob/main/assets/logo.png?raw=true"
+)
 data["number"] = uuid.uuid4().hex[16:].upper()
 data["date"] = dt.datetime.now().strftime("%b %d, %Y")
 data["due_date"] = (dt.datetime.now() + dt.timedelta(days=30)).strftime("%b %d, %Y")
-data |= get_hour_data('rush_hours.ods')
-data['item_header'] = "Description"
-data['quantity_header'] = "Hours"
+data |= get_hour_data("rush_hours.ods")
+data["item_header"] = "Description"
+data["quantity_header"] = "Hours"
 
 # generate the invoice
 url = "https://invoice-generator.com"
