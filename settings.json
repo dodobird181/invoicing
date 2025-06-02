@@ -1,0 +1,18 @@
+{
+    "timezone": "US/Eastern",
+    "invoice_generator_url": "https://invoice-generator.com",
+    "invoice_generator_api_key": "sk_LCHdlv2uUiJIRFknMY4FaKcMavEu9FPl",
+    "sender_profiles": {
+        "sammorris": {
+            "invoice_from": "Samuel Morris\ndodobird181@gmail.com",
+            "invoice_logo_url": "https://github.com/dodobird181/invoicing/blob/main/assets/logo.png?raw=true",
+            "invoice_due_date_days": 30
+        }
+    },
+    "clients": {
+        "NatuRnD": {
+            "save_folder": "naturnd",
+            "invoice_to": "Roy Group"
+        }
+    }
+}
