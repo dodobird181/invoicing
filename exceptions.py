@@ -43,3 +43,13 @@ class ClientDoesNotExist(Exception):
     def __init__(self, clientname: str, *args, **kwargs) -> None:
         self.clientname = clientname
         super().__init__(clientname, *args, **kwargs)
+
+
+class SenderProfileDoesNotExist(Exception):
+    """
+    The sender profile doesn't exist.
+    """
+
+    def __init__(self, profilename: str, *args, **kwargs) -> None:
+        self.profilename = profilename
+        super().__init__(profilename, *args, **kwargs)

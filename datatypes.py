@@ -19,11 +19,14 @@ class InvoiceItem:
     hourly_rate: float
     description: str
 
+    # optional title which appears next to the date in bold
+    title: str | None = None
+
 
 @dataclass
 class Invoice:
     """
-    Complete data for an invoice.
+    The data we need prior to generating an invoice.
     """
 
     sender_name: str
@@ -56,4 +59,21 @@ class ClientConfig:
     clientname: str
     invoice_to: str
     pdf_save_folder: str
+
+    # number of days after the invoice generation date that the invoice will say it's due
     due_date_days: int
+
+    # the google sheet ID to keep track of your hours, see exmaple sheet here:
+    # https://docs.google.com/spreadsheets/d/119i_TgxH7HClOA-ZGKgXn9koN8eZDN9yHTTyrMUpH-8/edit?usp=sharing.
+    gsheet_id: str
+
+
+@dataclass
+class SenderProfile:
+    """
+    A configured sender profile to generate invoices from.
+    """
+
+    profilename: str
+    invoice_from: str
+    invoice_logo_url: str

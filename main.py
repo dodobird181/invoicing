@@ -1,18 +1,25 @@
 import os
-from datetime import timedelta
-from typing import Any, Dict, List
+import textwrap
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Tuple
 
 import requests
 
-from datatypes import ClientConfig, GeneratedInvoice, Invoice, InvoiceItem
+from datatypes import (
+    ClientConfig,
+    GeneratedInvoice,
+    Invoice,
+    InvoiceItem,
+    SenderProfile,
+)
 from dateutils import app_now, filename_datetime, pretty_date, pretty_datetime
 from exceptions import (
     ClientDoesNotExist,
-    GsheetsReadErr,
-    GsheetsWriteErr,
     PdfGenFailed,
     PdfSaveFail,
+    SenderProfileDoesNotExist,
 )
+from gsheets import read_sheet_data
 from settings import config
 
 
@@ -26,27 +33,67 @@ def get_client_config(clientname: str) -> ClientConfig:
         invoice_to=client_config["invoice_to"],
         pdf_save_folder=client_config["save_folder"],
         due_date_days=client_config["invoice_due_date_days"],
+        gsheet_id=client_config["gsheet_id"],
     )
 
 
-def get_unbilled_invoice_items_from_gsheets() -> List[InvoiceItem]:
-    return [
-        InvoiceItem(app_now(), 3, 33, "I did some stuff!"),
-        InvoiceItem(app_now(), 12, 33, "I did some MORE stuff for longer!"),
-    ]
+def get_sender_profile(profilename: str) -> SenderProfile:
+    try:
+        profile = config["sender_profiles"][profilename]
+    except KeyError:
+        raise SenderProfileDoesNotExist(profilename)
+    return SenderProfile(
+        profilename=profilename,
+        invoice_from=profile["invoice_from"],
+        invoice_logo_url=profile["invoice_logo_url"],
+    )
+
+
+def get_unbilled_invoice_items_from_gsheets(client: ClientConfig) -> List[InvoiceItem]:
+    """
+    Filter the client's hour tracking google sheet for unbilled invoice items and return them.
+    """
+
+    def parse_title_and_desc(item_notes: str) -> Tuple[str, str]:
+        note_data = str(item_notes).split(" | ")
+        if len(note_data) == 1:
+            # just put everything in the description field
+            title = ""
+            description = note_data[0]
+        elif len(note_data) == 2:
+            title = note_data[0]
+            description = "\n".join(textwrap.wrap(note_data[1]))
+        else:
+            raise ValueError(f"Bad formatting in {note_data}")
+        return title, description
+
+    data = read_sheet_data(gsheet_id=client.gsheet_id)
+    unbilled = []
+    for row in data:
+        # a custom mapping is assumed here based on the sheet data
+        if row[4] == "Not Billed":
+            title, description = parse_title_and_desc(row[3])
+            unbilled.append(
+                InvoiceItem(
+                    date=datetime.strptime(row[0], "%B %d, %Y"),
+                    hours=float(row[1]),
+                    hourly_rate=float(row[2]),
+                    description=description,
+                    title=title,
+                )
+            )
+    return unbilled
 
 
 def build_invoice_for_client(
     items: List[InvoiceItem],
-    clientname: str,
-    sender_profile_name: str,
+    client: ClientConfig,
+    profile: SenderProfile,
 ) -> Invoice:
-    client = get_client_config(clientname)
-    sender_profile = config["sender_profiles"][sender_profile_name]
     due_date = app_now() + timedelta(days=client.due_date_days)
     return Invoice(
-        sender_name=sender_profile["invoice_from"],
-        sender_logo_url=sender_profile["invoice_logo_url"],
+        sender_name=profile.invoice_from,
+        sender_logo_url=profile.invoice_logo_url,
         recipient_name=client.invoice_to,
         items=items,
         due_date=due_date,
@@ -69,7 +116,9 @@ def _get_invoice_data_for_api(invoice: Invoice) -> Dict[str, Any]:
     itemnum = 1
     for item in invoice.items:
         # special mapping of names here for the API to generate an invoice that looks correct
-        data[f"items[{itemnum}][name]"] = pretty_date(item.date)
+        date = pretty_date(item.date)
+        name = f"{date} - {item.title}" if item.title else date
+        data[f"items[{itemnum}][name]"] = name
         data[f"items[{itemnum}][quantity]"] = f"{item.hours:0.1f}"
         data[f"items[{itemnum}][unit_cost]"] = f"{item.hourly_rate:0.0f}"
         data[f"items[{itemnum}][description]"] = item.description
@@ -79,7 +128,7 @@ def _get_invoice_data_for_api(invoice: Invoice) -> Dict[str, Any]:
 
 
 def generate_pdf_data(invoice: Invoice) -> GeneratedInvoice:
-    """NatuRnD
+    """
     Create a generated invoice from an invoice object (assuming the invoice generator
     API is configured properly and the device has an internet connection).
     """
@@ -96,13 +145,15 @@ def generate_pdf_data(invoice: Invoice) -> GeneratedInvoice:
     raise PdfGenFailed(f"Status code: {response.status_code}, API msg: {response.text}")
 
 
-def save_pdf_for_client(generated_invoice: GeneratedInvoice, clientname: str) -> None:
+def save_pdf_for_client(
+    generated_invoice: GeneratedInvoice,
+    client: ClientConfig,
+) -> None:
     """
     Save an invoice PDF file for a client. The client must be configured in settings.py for
     this to work. Raise `ClientDoesNotExist` when a client isn't configured and `PdfSaveFail`
     if the data-saving operation fails.
     """
-    client = get_client_config(clientname)
     try:
         os.makedirs(client.pdf_save_folder, exist_ok=True)
         save_filename = filename_datetime(generated_invoice.generated_at)
@@ -114,41 +165,9 @@ def save_pdf_for_client(generated_invoice: GeneratedInvoice, clientname: str) ->
 
 
 if __name__ == "__main__":
-    clientname = "NatuRnD"
-    sender_profile = "sammorris"
-    items = get_unbilled_invoice_items_from_gsheets()
-    invoice = build_invoice_for_client(items, clientname, sender_profile)
+    client = get_client_config("Einstein & Co.")
+    profile = get_sender_profile("test_profile")
+    items = get_unbilled_invoice_items_from_gsheets(client)
+    invoice = build_invoice_for_client(items, client, profile)
     generated_invoice = generate_pdf_data(invoice)
-    save_pdf_for_client(generated_invoice, clientname)
-
-
-# # SAM TODO: Clean this up with a config.json file or something to store this data.
-# # SAM TODO: Add a CLI interface for this program so that I can just store it on my
-# # computer and not have to worry about opening up LibreOffice Calc.
-# # Sam TODO: Add a better README for this repository and double-check that it's public.
-
-# # prepare data
-# data = dict()
-# data["from"] = "Samuel Morris\ndodobird181@gmail.com"
-# data["to"] = "Roy Group"
-# data["logo"] = (
-#     "https://github.com/dodobird181/invoicing/blob/main/assets/logo.png?raw=true"
-# )
-# data["number"] = uuid.uuid4().hex[16:].upper()
-# data["date"] = dt.datetime.now().strftime("%b %d, %Y")
-# data["due_date"] = (dt.datetime.now() + dt.timedelta(days=30)).strftime("%b %d, %Y")
-# data |= get_hour_data("rush_hours.ods")
-# data["item_header"] = "Description"
-# data["quantity_header"] = "Hours"
-
-# # generate the invoice
-# headers = {"Authorization": f"Bearer {config['invoice_generator_api_key']}"}
-# response = requests.post(config["invoice_generator_url"], headers=headers, data=data)
-# if response.status_code == 200:
-#     print("Generated invoice successfully!")
-#     save_path = f'smorris-invoice-{dt.datetime.now().strftime("%Y-%m-%d")}.pdf'
-#     with open(save_path, "wb") as pdf_file:
-#         pdf_file.write(response.content)
-#     print(f"Saved invoice successfully at: {save_path}!")
-# else:
-#     print("Error generating invoice:", response.status_code, response.text)
+    save_pdf_for_client(generated_invoice, client)
