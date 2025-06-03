@@ -165,8 +165,8 @@ def save_pdf_for_client(
 
 
 if __name__ == "__main__":
-    client = get_client_config("Einstein & Co.")
-    profile = get_sender_profile("test_profile")
+    client = get_client_config("NatuRnD")
+    profile = get_sender_profile("sammorris")
     items = get_unbilled_invoice_items_from_gsheets(client)
     invoice = build_invoice_for_client(items, client, profile)
     generated_invoice = generate_pdf_data(invoice)
