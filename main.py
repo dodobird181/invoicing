@@ -174,7 +174,12 @@ def save_pdf_for_client(
 if __name__ == "__main__":
     client = get_client_config("NatuRnD")
     profile = get_sender_profile("sammorris")
-    items = get_unbilled_invoice_items_from_gsheets(client)
+    try:
+        items = get_unbilled_invoice_items_from_gsheets(client)
+    except RefreshError as e:
+        # sometimes the token needs to be refreshed (opens browser SSO flow)
+        subprocess.run(["rm", "token.json"])
+        items = get_unbilled_invoice_items_from_gsheets(client)
     invoice = build_invoice_for_client(items, client, profile)
     generated_invoice = generate_pdf_data(invoice)
     save_pdf_for_client(generated_invoice, client)
