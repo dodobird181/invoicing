@@ -1,9 +1,11 @@
 import os
+import subprocess
 import textwrap
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Tuple
 
 import requests
+from google.auth.exceptions import RefreshError
 
 from datatypes import (
     ClientConfig,
@@ -46,6 +48,7 @@ def get_sender_profile(profilename: str) -> SenderProfile:
         profilename=profilename,
         invoice_from=profile["invoice_from"],
         invoice_logo_url=profile["invoice_logo_url"],
+        terms=profile["terms"],
     )
 
 
@@ -71,7 +74,7 @@ def get_unbilled_invoice_items_from_gsheets(client: ClientConfig) -> List[Invoic
     unbilled = []
     for row in data:
         # a custom mapping is assumed here based on the sheet data
-        if row[4] == "Not Billed":
+        if row[4] == "Not Billed" and row[0] != "":
             title, description = parse_title_and_desc(row[3])
             unbilled.append(
                 InvoiceItem(
@@ -91,17 +94,18 @@ def build_invoice_for_client(
     profile: SenderProfile,
 ) -> Invoice:
     due_date = app_now() + timedelta(days=client.due_date_days)
-    return Invoice(
+    invoice = Invoice(
         sender_name=profile.invoice_from,
         sender_logo_url=profile.invoice_logo_url,
         recipient_name=client.invoice_to,
         items=items,
         due_date=due_date,
+        terms=profile.terms,
     )
+    return invoice
 
 
 def _get_invoice_data_for_api(invoice: Invoice) -> Dict[str, Any]:
-
     data = {
         "from": invoice.sender_name,
         "to": invoice.recipient_name,
@@ -112,6 +116,9 @@ def _get_invoice_data_for_api(invoice: Invoice) -> Dict[str, Any]:
         "quantity_header": invoice.quantity_header,
         "number": invoice.invoice_number,
     }
+
+    if invoice.terms != "":
+        data["terms"] = invoice.terms
 
     itemnum = 1
     for item in invoice.items:

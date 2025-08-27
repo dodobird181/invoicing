@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import datetime
 from typing import List
 from uuid import uuid4
 
@@ -37,6 +37,7 @@ class Invoice:
     item_header: str = "Description"  # default item header
     quantity_header: str = "Hours"  # default quantity header (set for hourly billing)
     invoice_number: str = uuid4().hex[16:].upper()
+    terms: str = ""  # default terms are empty
 
 
 @dataclass
@@ -77,3 +78,4 @@ class SenderProfile:
     profilename: str
     invoice_from: str
     invoice_logo_url: str
+    terms: str
