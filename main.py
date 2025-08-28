@@ -1,4 +1,5 @@
 import os
+import signal
 import subprocess
 import textwrap
 from datetime import datetime, timedelta
@@ -155,7 +156,7 @@ def generate_pdf_data(invoice: Invoice) -> GeneratedInvoice:
 def save_pdf_for_client(
     generated_invoice: GeneratedInvoice,
     client: ClientConfig,
-) -> None:
+) -> str:
     """
     Save an invoice PDF file for a client. The client must be configured in settings.py for
     this to work. Raise `ClientDoesNotExist` when a client isn't configured and `PdfSaveFail`
@@ -167,6 +168,7 @@ def save_pdf_for_client(
         savepath = f"{client.pdf_save_folder}/{save_filename}.pdf"
         with open(savepath, "wb") as savefile:
             savefile.write(generated_invoice.pdf_data)
+        return savepath
     except Exception as e:
         raise PdfSaveFail from e
 
@@ -182,4 +184,25 @@ if __name__ == "__main__":
         items = get_unbilled_invoice_items_from_gsheets(client)
     invoice = build_invoice_for_client(items, client, profile)
     generated_invoice = generate_pdf_data(invoice)
-    save_pdf_for_client(generated_invoice, client)
+    savepath = save_pdf_for_client(generated_invoice, client)
+    preview = subprocess.Popen(
+        ["librewolf", "--new-window", savepath],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        preexec_fn=os.setsid,
+    )
+    print(f"Savepath is: {savepath}")
+    while True:
+        keep = input("Do you want to keep this invoice? (y/n) ")
+        if keep.lower().strip() == "y":
+            keep = True
+            break
+        elif keep.lower().strip() == "n":
+            keep = False
+            break
+        else:
+            # ask again
+            print("Please answer with a 'y/Y' for yes or 'n/N' for no to keep the invoice.")
+            ...
+    if keep == False:
+        subprocess.run(["rm", savepath])
